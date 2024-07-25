@@ -5,8 +5,8 @@ from langchain.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.llms import OpenAI
-from langchain.chains import RetrievalQAWithSourcesChain
-from langchain.chains.qa_with_sources.loading import BaseQAWithSourcesChain
+from langchain.chains.question_answering import load_qa_chain
+from langchain.chains import RetrievalQA
 
 # Streamlit app
 st.title("Document QA System")
@@ -63,9 +63,12 @@ Answer in Korean.
         llm = OpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
 
         # 단계 8: 체인(Chain) 생성
-        chain = RetrievalQAWithSourcesChain(
+        qa_chain = load_qa_chain(llm, chain_type="stuff")
+
+        # 단계 9: 체인 구성(Configure Chain)
+        qa_chain = RetrievalQA(
             retriever=retriever,
-            llm=llm,
+            combine_documents_chain=qa_chain,
             prompt=prompt
         )
 
@@ -77,7 +80,7 @@ Answer in Korean.
 
         if question:
             with st.spinner('Generating answer...'):
-                response = chain({"query": question})
+                response = qa_chain({"query": question})
                 st.write("### Answer")
                 st.write(response['result'])
 else:
