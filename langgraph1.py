@@ -1,7 +1,6 @@
 import streamlit as st
 import fitz  # PyMuPDF
-import requests
-import json
+import openai
 import faiss
 import numpy as np
 
@@ -9,7 +8,10 @@ import numpy as np
 st.title('논문 기반 Q&A 시스템')
 
 # API 키 입력
-api_key = st.text_input('Upstage API 키를 입력하세요:', type='password')
+api_key = st.text_input('OpenAI API 키를 입력하세요:', type='password')
+
+# OpenAI API 키 설정
+openai.api_key = api_key
 
 # PDF 파일 업로드
 uploaded_file = st.file_uploader("논문 PDF 파일을 업로드하세요.", type="pdf")
@@ -22,11 +24,10 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text()
     return text
 
-def get_embeddings(text, api_key):
-    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
-    data = {'texts': text}
-    response = requests.post('https://api.upstage.com/v1/embeddings', headers=headers, json=data)
-    return response.json()['embeddings']
+def get_embeddings(texts):
+    response = openai.Embedding.create(input=texts, model="text-embedding-ada-002")
+    embeddings = [embedding['embedding'] for embedding in response['data']]
+    return embeddings
 
 def create_faiss_index(embeddings):
     dimension = len(embeddings[0])
@@ -41,7 +42,7 @@ if api_key and uploaded_file:
     pdf_text = extract_text_from_pdf("temp.pdf")
 
     # 텍스트 임베딩 생성
-    text_embeddings = get_embeddings([pdf_text], api_key)
+    text_embeddings = get_embeddings([pdf_text])
 
     # FAISS 인덱스 생성
     index = create_faiss_index(text_embeddings)
@@ -52,7 +53,7 @@ if api_key and uploaded_file:
 
     if st.button('질문에 답하기'):
         # 질문 임베딩 생성
-        question_embedding = get_embeddings([user_question], api_key)
+        question_embedding = get_embeddings([user_question])
 
         # 가장 유사한 텍스트 검색
         D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
