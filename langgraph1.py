@@ -62,7 +62,7 @@ Answer in Korean.
         llm = OpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
 
         # 단계 8: 체인(Chain) 생성
-        qa_chain = load_qa_chain(llm, chain_type="stuff")
+        qa_chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt)
 
         st.success('Document processed successfully!')
 
