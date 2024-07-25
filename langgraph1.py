@@ -4,7 +4,7 @@ from langchain.llms import OpenAI
 from langchain.document_loaders import PyMuPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.chains import load_qa_chain
+from langchain.chains.question_answering import load_qa_chain
 import json
 
 # 앱 타이틀
@@ -18,8 +18,8 @@ if api_key:
     uploaded_file = st.file_uploader("논문 PDF 파일을 업로드하세요.", type="pdf")
 
     # OpenAI 설정
-    llm = OpenAI(openai_api_key=api_key)
-    embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+    llm = OpenAI(api_key=api_key)
+    embeddings = OpenAIEmbeddings(api_key=api_key)
 
     def extract_text_and_create_embeddings(pdf_path):
         loader = PyMuPDFLoader(pdf_path)
