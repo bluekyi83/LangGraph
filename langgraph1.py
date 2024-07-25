@@ -45,6 +45,15 @@ def create_faiss_index(embeddings):
     index.add(np.array(embeddings).astype(np.float32))
     return index
 
+def summarize_text(text, api_key):
+    openai.api_key = api_key
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=f"Summarize the following text in 5 sentences:\n\n{text}",
+        max_tokens=150
+    )
+    return response.choices[0].text.strip()
+
 if api_key and uploaded_file:
     with open("temp.pdf", "wb") as f:
         f.write(uploaded_file.getbuffer())
@@ -59,5 +68,8 @@ if api_key and uploaded_file:
     if st.button('질문에 답하기'):
         question_embedding = get_embeddings([user_question], api_key)
         D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
+        closest_chunk = text_chunks[I[0][0]]
+        summary = summarize_text(closest_chunk, api_key)
+
         st.header('답변')
-        st.write(text_chunks[I[0][0]])
+        st.write(summary)
