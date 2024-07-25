@@ -1,5 +1,5 @@
 streamlit
-langchain==0.2.11
+langchain
 pymupdf
 openai
 beautifulsoup4
