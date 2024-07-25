@@ -1,12 +1,11 @@
 import streamlit as st
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import PyMuPDFLoader
-from langchain.vectorstores import FAISS
-from langchain.prompts import PromptTemplate
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.llms import OpenAI
-from langchain.chains.question_answering import load_qa_chain
-from langchain.chains import RetrievalQA
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_community.vectorstores import FAISS
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 # Streamlit app
 st.title("Document QA System")
@@ -50,26 +49,24 @@ Use the following pieces of retrieved context to answer the question.
 If you don't know the answer, just say that you don't know. 
 Answer in Korean.
 
-# Question: 
+#Question: 
 {question} 
-# Context: 
+#Context: 
 {context} 
 
-# Answer:"""
+#Answer:"""
         )
 
         # 단계 7: 언어모델(LLM) 생성
         # 모델(LLM) 을 생성합니다.
-        llm = OpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
+        llm = ChatOpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
 
         # 단계 8: 체인(Chain) 생성
-        qa_chain = load_qa_chain(llm, chain_type="stuff")
-
-        # 단계 9: 체인 구성(Configure Chain)
-        qa_chain = RetrievalQA(
-            retriever=retriever,
-            combine_documents_chain=qa_chain,
-            prompt=prompt
+        chain = (
+            {"context": retriever, "question": RunnablePassthrough()}
+            | prompt
+            | llm
+            | StrOutputParser()
         )
 
         st.success('Document processed successfully!')
@@ -80,8 +77,8 @@ Answer in Korean.
 
         if question:
             with st.spinner('Generating answer...'):
-                response = qa_chain({"query": question})
+                response = chain.invoke(question)
                 st.write("### Answer")
-                st.write(response['result'])
+                st.write(response)
 else:
     st.warning("Please upload a PDF document and enter your OpenAI API key.")
