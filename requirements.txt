@@ -1,4 +1,4 @@
 streamlit
-openai
-faiss-cpu
+requests
 pymupdf
+faiss-cpu
