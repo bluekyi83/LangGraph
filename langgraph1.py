@@ -76,12 +76,10 @@ Answer in Korean.
                 docs = retriever(question, k=5)
                 context = "\n".join([doc.page_content for doc in docs])
                 
-                response = qa_chain.run({
-                    "context": context,
-                    "question": question
-                })
+                inputs = {"context": context, "question": question}
+                response = qa_chain(inputs)
                 
                 st.write("### Answer")
-                st.write(response)
+                st.write(response['answer'])
 else:
     st.warning("Please upload a PDF document and enter your OpenAI API key.")
