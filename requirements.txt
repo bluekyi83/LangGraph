@@ -360,4 +360,3 @@ langchain==0.2.7
 openai==1.35.13
 PyMuPDF==1.24.7
 faiss-cpu==1.8.0.post1
-
