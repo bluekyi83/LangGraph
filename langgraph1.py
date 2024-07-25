@@ -5,7 +5,8 @@ from langchain.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.llms import OpenAI
-from langchain.chains import RetrievalQA
+from langchain.chains import RetrievalQAWithSourcesChain
+from langchain.chains.qa_with_sources.loading import BaseQAWithSourcesChain
 
 # Streamlit app
 st.title("Document QA System")
@@ -49,12 +50,12 @@ Use the following pieces of retrieved context to answer the question.
 If you don't know the answer, just say that you don't know. 
 Answer in Korean.
 
-#Question: 
+# Question: 
 {question} 
-#Context: 
+# Context: 
 {context} 
 
-#Answer:"""
+# Answer:"""
         )
 
         # 단계 7: 언어모델(LLM) 생성
@@ -62,10 +63,9 @@ Answer in Korean.
         llm = OpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
 
         # 단계 8: 체인(Chain) 생성
-        chain = RetrievalQA.from_chain_type(
+        chain = RetrievalQAWithSourcesChain(
             retriever=retriever,
             llm=llm,
-            chain_type="stuff",
             prompt=prompt
         )
 
@@ -77,8 +77,8 @@ Answer in Korean.
 
         if question:
             with st.spinner('Generating answer...'):
-                response = chain.run({"query": question})
+                response = chain({"query": question})
                 st.write("### Answer")
-                st.write(response)
+                st.write(response['result'])
 else:
     st.warning("Please upload a PDF document and enter your OpenAI API key.")
