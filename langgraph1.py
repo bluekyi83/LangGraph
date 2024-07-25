@@ -55,13 +55,16 @@ def create_faiss_index(embeddings):
 def summarize_text(text, api_key):
     openai.api_key = api_key
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=f"Summarize the following text in 5 sentences:\n\n{text}",
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Please summarize the following text in 5 sentences."},
+                {"role": "user", "content": text}
+            ],
             max_tokens=150,
             temperature=0.5
         )
-        return response.choices[0].text.strip()
+        return response.choices[0].message['content'].strip()
     except openai.error.InvalidRequestError as e:
         st.error(f"Invalid request error: {e}")
         return "요약 실패: 요청 오류 발생"
