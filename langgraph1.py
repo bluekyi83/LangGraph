@@ -4,7 +4,7 @@ from langchain.llms import OpenAI
 from langchain.document_loaders import PyMuPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA
+from langchain.chains.question_answering import load_qa_chain
 import json
 
 # 앱 타이틀
@@ -69,7 +69,7 @@ if api_key:
         if st.button('질문에 답하기'):
             # 질문을 임베딩하여 리트리버 사용
             retriever = vectorstore.as_retriever()
-            qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+            qa_chain = load_qa_chain(llm=llm, retriever=retriever)
 
             # 질문에 대한 답변 얻기
             result = qa_chain.run(user_question)
@@ -86,4 +86,3 @@ if api_key:
             except json.JSONDecodeError:
                 st.write("JSON 형식이 올바르지 않습니다.")
                 st.write(result)
-
