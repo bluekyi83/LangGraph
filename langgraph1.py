@@ -21,18 +21,28 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text()
     return text
 
+def split_text(text, max_tokens=2048):
+    words = text.split()
+    chunks = []
+    current_chunk = []
+    current_length = 0
+    for word in words:
+        current_length += len(word) + 1
+        if current_length > max_tokens:
+            chunks.append(' '.join(current_chunk))
+            current_chunk = [word]
+            current_length = len(word) + 1
+        else:
+            current_chunk.append(word)
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+    return chunks
+
 def get_embeddings(texts, api_key):
     openai.api_key = api_key
-    try:
-        response = openai.Embedding.create(input=texts, model="text-embedding-ada-002")
-        embeddings = [embedding['embedding'] for embedding in response['data']]
-        return embeddings
-    except openai.error.InvalidRequestError as e:
-        st.error(f"Invalid request error: {e}")
-        return None
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-        return None
+    response = openai.Embedding.create(input=texts, model="text-embedding-ada-002")
+    embeddings = [embedding['embedding'] for embedding in response['data']]
+    return embeddings
 
 def create_faiss_index(embeddings):
     dimension = len(embeddings[0])
@@ -46,31 +56,28 @@ if api_key and uploaded_file:
         f.write(uploaded_file.getbuffer())
     pdf_text = extract_text_from_pdf("temp.pdf")
 
-    # 텍스트 길이 제한 처리 (OpenAI API는 매우 긴 텍스트를 처리할 수 없음)
-    if len(pdf_text) > 5000:
-        pdf_text = pdf_text[:5000]
-        st.warning("PDF 텍스트가 너무 길어 일부만 사용됩니다.")
+    # 텍스트를 최대 토큰 길이에 맞게 분할
+    text_chunks = split_text(pdf_text)
 
-    # 텍스트 임베딩 생성
-    text_embeddings = get_embeddings([pdf_text], api_key)
+    # 각 청크를 임베딩
+    text_embeddings = get_embeddings(text_chunks, api_key)
 
-    if text_embeddings:
-        # FAISS 인덱스 생성
-        index = create_faiss_index(text_embeddings)
+    # FAISS 인덱스 생성
+    index = create_faiss_index(text_embeddings)
 
-        # 질문 입력
-        st.header('질문 입력')
-        user_question = st.text_area('질문을 입력하세요:')
+    # 질문 입력
+    st.header('질문 입력')
+    user_question = st.text_area('질문을 입력하세요:')
 
-        if st.button('질문에 답하기'):
-            # 질문 임베딩 생성
-            question_embedding = get_embeddings([user_question], api_key)
+    if st.button('질문에 답하기'):
+        # 질문 임베딩 생성
+        question_embedding = get_embeddings([user_question], api_key)
 
-            if question_embedding:
-                # 가장 유사한 텍스트 검색
-                D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
-                closest_text = pdf_text.split('\n')[I[0][0]]
+        if question_embedding:
+            # 가장 유사한 텍스트 검색
+            D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
+            closest_chunk = text_chunks[I[0][0]]
 
-                # 결과 출력
-                st.header('답변')
-                st.write(closest_text)
+            # 결과 출력
+            st.header('답변')
+            st.write(closest_chunk)
