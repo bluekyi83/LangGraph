@@ -2,11 +2,10 @@ import streamlit as st
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import PyMuPDFLoader
 from langchain.vectorstores import FAISS
-from langchain.output_parsers import StrOutputParser
 from langchain.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.llms import OpenAI
+from langchain.chains import RetrievalQA
 
 # Streamlit app
 st.title("Document QA System")
@@ -63,9 +62,10 @@ Answer in Korean.
         llm = OpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
 
         # 단계 8: 체인(Chain) 생성
-        chain = RetrievalQA(
+        chain = RetrievalQA.from_chain_type(
             retriever=retriever,
             llm=llm,
+            chain_type="stuff",
             prompt=prompt
         )
 
@@ -77,8 +77,8 @@ Answer in Korean.
 
         if question:
             with st.spinner('Generating answer...'):
-                response = chain({"query": question})
+                response = chain.run({"query": question})
                 st.write("### Answer")
-                st.write(response['result'])
+                st.write(response)
 else:
     st.warning("Please upload a PDF document and enter your OpenAI API key.")
