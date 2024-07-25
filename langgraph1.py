@@ -1,6 +1,7 @@
 import streamlit as st
 import fitz  # PyMuPDF
-import openai
+import requests
+import json
 import faiss
 import numpy as np
 
@@ -8,10 +9,7 @@ import numpy as np
 st.title('논문 기반 Q&A 시스템')
 
 # API 키 입력
-api_key = st.text_input('OpenAI API 키를 입력하세요:', type='password')
-
-# OpenAI API 키 설정
-openai.api_key = api_key
+api_key = st.text_input('Perplexity API 키를 입력하세요:', type='password')
 
 # PDF 파일 업로드
 uploaded_file = st.file_uploader("논문 PDF 파일을 업로드하세요.", type="pdf")
@@ -24,10 +22,16 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text()
     return text
 
-def get_embeddings(texts):
-    response = openai.Embedding.create(input=texts, model="text-embedding-ada-002")
-    embeddings = [embedding['embedding'] for embedding in response['data']]
-    return embeddings
+def get_embeddings(texts, api_key):
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+    data = {'texts': texts}
+    try:
+        response = requests.post('https://api.perplexity.ai/v1/embeddings', headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()['embeddings']
+    except requests.exceptions.RequestException as e:
+        st.error(f"API 요청 중 오류가 발생했습니다: {e}")
+        return None
 
 def create_faiss_index(embeddings):
     dimension = len(embeddings[0])
@@ -42,23 +46,25 @@ if api_key and uploaded_file:
     pdf_text = extract_text_from_pdf("temp.pdf")
 
     # 텍스트 임베딩 생성
-    text_embeddings = get_embeddings([pdf_text])
+    text_embeddings = get_embeddings([pdf_text], api_key)
 
-    # FAISS 인덱스 생성
-    index = create_faiss_index(text_embeddings)
+    if text_embeddings:
+        # FAISS 인덱스 생성
+        index = create_faiss_index(text_embeddings)
 
-    # 질문 입력
-    st.header('질문 입력')
-    user_question = st.text_area('질문을 입력하세요:')
+        # 질문 입력
+        st.header('질문 입력')
+        user_question = st.text_area('질문을 입력하세요:')
 
-    if st.button('질문에 답하기'):
-        # 질문 임베딩 생성
-        question_embedding = get_embeddings([user_question])
+        if st.button('질문에 답하기'):
+            # 질문 임베딩 생성
+            question_embedding = get_embeddings([user_question], api_key)
 
-        # 가장 유사한 텍스트 검색
-        D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
-        closest_text = pdf_text.split('\n')[I[0][0]]
+            if question_embedding:
+                # 가장 유사한 텍스트 검색
+                D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
+                closest_text = pdf_text.split('\n')[I[0][0]]
 
-        # 결과 출력
-        st.header('답변')
-        st.write(closest_text)
+                # 결과 출력
+                st.header('답변')
+                st.write(closest_text)
