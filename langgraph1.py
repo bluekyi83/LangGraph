@@ -1,11 +1,12 @@
 import streamlit as st
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_community.vectorstores import FAISS
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.document_loaders import PyMuPDFLoader
+from langchain.vectorstores import FAISS
+from langchain.output_parsers import StrOutputParser
+from langchain.prompts import PromptTemplate
+from langchain.chains import RetrievalQA
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.llms import OpenAI
 
 # Streamlit app
 st.title("Document QA System")
@@ -59,14 +60,13 @@ Answer in Korean.
 
         # 단계 7: 언어모델(LLM) 생성
         # 모델(LLM) 을 생성합니다.
-        llm = ChatOpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
+        llm = OpenAI(model_name="gpt-4", temperature=0, openai_api_key=openai_api_key)
 
         # 단계 8: 체인(Chain) 생성
-        chain = (
-            {"context": retriever, "question": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
+        chain = RetrievalQA(
+            retriever=retriever,
+            llm=llm,
+            prompt=prompt
         )
 
         st.success('Document processed successfully!')
@@ -77,8 +77,8 @@ Answer in Korean.
 
         if question:
             with st.spinner('Generating answer...'):
-                response = chain.invoke(question)
+                response = chain({"query": question})
                 st.write("### Answer")
-                st.write(response)
+                st.write(response['result'])
 else:
     st.warning("Please upload a PDF document and enter your OpenAI API key.")
