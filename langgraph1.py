@@ -23,61 +23,41 @@ def extract_text_from_pdf(pdf_path):
 
 def split_text(text, max_tokens=2048):
     words = text.split()
-    chunks = []
-    current_chunk = []
-    current_length = 0
+    chunks, chunk, length = [], [], 0
     for word in words:
-        current_length += len(word) + 1
-        if current_length > max_tokens:
-            chunks.append(' '.join(current_chunk))
-            current_chunk = [word]
-            current_length = len(word) + 1
+        length += len(word) + 1
+        if length > max_tokens:
+            chunks.append(' '.join(chunk))
+            chunk, length = [word], len(word) + 1
         else:
-            current_chunk.append(word)
-    if current_chunk:
-        chunks.append(' '.join(current_chunk))
+            chunk.append(word)
+    if chunk:
+        chunks.append(' '.join(chunk))
     return chunks
 
 def get_embeddings(texts, api_key):
     openai.api_key = api_key
     response = openai.Embedding.create(input=texts, model="text-embedding-ada-002")
-    embeddings = [embedding['embedding'] for embedding in response['data']]
-    return embeddings
+    return [embedding['embedding'] for embedding in response['data']]
 
 def create_faiss_index(embeddings):
-    dimension = len(embeddings[0])
-    index = faiss.IndexFlatL2(dimension)
+    index = faiss.IndexFlatL2(len(embeddings[0]))
     index.add(np.array(embeddings).astype(np.float32))
     return index
 
 if api_key and uploaded_file:
-    # PDF 파일에서 텍스트 추출
     with open("temp.pdf", "wb") as f:
         f.write(uploaded_file.getbuffer())
     pdf_text = extract_text_from_pdf("temp.pdf")
-
-    # 텍스트를 최대 토큰 길이에 맞게 분할
     text_chunks = split_text(pdf_text)
-
-    # 각 청크를 임베딩
     text_embeddings = get_embeddings(text_chunks, api_key)
-
-    # FAISS 인덱스 생성
     index = create_faiss_index(text_embeddings)
 
-    # 질문 입력
     st.header('질문 입력')
     user_question = st.text_area('질문을 입력하세요:')
 
     if st.button('질문에 답하기'):
-        # 질문 임베딩 생성
         question_embedding = get_embeddings([user_question], api_key)
-
-        if question_embedding:
-            # 가장 유사한 텍스트 검색
-            D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
-            closest_chunk = text_chunks[I[0][0]]
-
-            # 결과 출력
-            st.header('답변')
-            st.write(closest_chunk)
+        D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
+        st.header('답변')
+        st.write(text_chunks[I[0][0]])
