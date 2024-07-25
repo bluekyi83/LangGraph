@@ -6,7 +6,6 @@ from langchain.prompts import PromptTemplate
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.llms import OpenAI
 from langchain.chains.question_answering import load_qa_chain
-from langchain.retrievers.document import Document
 
 # Streamlit app
 st.title("Document QA System")
