@@ -37,8 +37,15 @@ def split_text(text, max_tokens=2048):
 
 def get_embeddings(texts, api_key):
     openai.api_key = api_key
-    response = openai.Embedding.create(input=texts, model="text-embedding-ada-002")
-    return [embedding['embedding'] for embedding in response['data']]
+    try:
+        response = openai.Embedding.create(input=texts, model="text-embedding-ada-002")
+        return [embedding['embedding'] for embedding in response['data']]
+    except openai.error.InvalidRequestError as e:
+        st.error(f"Invalid request error: {e}")
+        return None
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return None
 
 def create_faiss_index(embeddings):
     index = faiss.IndexFlatL2(len(embeddings[0]))
@@ -47,12 +54,20 @@ def create_faiss_index(embeddings):
 
 def summarize_text(text, api_key):
     openai.api_key = api_key
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=f"Summarize the following text in 5 sentences:\n\n{text}",
-        max_tokens=150
-    )
-    return response.choices[0].text.strip()
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=f"Summarize the following text in 5 sentences:\n\n{text}",
+            max_tokens=150,
+            temperature=0.5
+        )
+        return response.choices[0].text.strip()
+    except openai.error.InvalidRequestError as e:
+        st.error(f"Invalid request error: {e}")
+        return "요약 실패: 요청 오류 발생"
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return "요약 실패: 일반 오류 발생"
 
 if api_key and uploaded_file:
     with open("temp.pdf", "wb") as f:
@@ -60,16 +75,19 @@ if api_key and uploaded_file:
     pdf_text = extract_text_from_pdf("temp.pdf")
     text_chunks = split_text(pdf_text)
     text_embeddings = get_embeddings(text_chunks, api_key)
-    index = create_faiss_index(text_embeddings)
 
-    st.header('질문 입력')
-    user_question = st.text_area('질문을 입력하세요:')
+    if text_embeddings:
+        index = create_faiss_index(text_embeddings)
 
-    if st.button('질문에 답하기'):
-        question_embedding = get_embeddings([user_question], api_key)
-        D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
-        closest_chunk = text_chunks[I[0][0]]
-        summary = summarize_text(closest_chunk, api_key)
+        st.header('질문 입력')
+        user_question = st.text_area('질문을 입력하세요:')
 
-        st.header('답변')
-        st.write(summary)
+        if st.button('질문에 답하기'):
+            question_embedding = get_embeddings([user_question], api_key)
+            if question_embedding:
+                D, I = index.search(np.array(question_embedding).astype(np.float32), 1)
+                closest_chunk = text_chunks[I[0][0]]
+                summary = summarize_text(closest_chunk, api_key)
+
+                st.header('답변')
+                st.write(summary)
