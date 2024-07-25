@@ -24,13 +24,13 @@ if api_key:
     def extract_text_and_create_embeddings(pdf_path):
         loader = PyMuPDFLoader(pdf_path)
         documents = loader.load()
-        
+
         # 텍스트를 분할하여 임베딩
         texts = []
         for doc in documents:
-            split_text = split_document_text(doc.page_content)
-            texts.extend(split_text)
-        
+            split_texts = split_document_text(doc.page_content)
+            texts.extend(split_texts)
+
         vectorstore = FAISS.from_texts(texts, embeddings)
         return vectorstore
 
@@ -53,7 +53,7 @@ if api_key:
 
         if chunk:
             chunks.append(' '.join(chunk))
-        
+
         return chunks
 
     if uploaded_file is not None:
@@ -61,19 +61,19 @@ if api_key:
         with open("temp.pdf", "wb") as f:
             f.write(uploaded_file.getbuffer())
         vectorstore = extract_text_and_create_embeddings("temp.pdf")
-        
+
         # 질문 입력
         st.header('질문 입력')
         user_question = st.text_area('질문을 입력하세요:')
-        
+
         if st.button('질문에 답하기'):
             # 질문을 임베딩하여 리트리버 사용
             retriever = vectorstore.as_retriever()
             qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
-            
+
             # 질문에 대한 답변 얻기
             result = qa_chain.run(user_question)
-            
+
             # 결과 출력
             st.header('답변')
             st.write(result)
@@ -86,3 +86,4 @@ if api_key:
             except json.JSONDecodeError:
                 st.write("JSON 형식이 올바르지 않습니다.")
                 st.write(result)
+
