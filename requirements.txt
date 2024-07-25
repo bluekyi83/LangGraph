@@ -1,6 +1,3 @@
 streamlit
-langchain
-pymupdf
-openai
-beautifulsoup4
+requests
 faiss-cpu
