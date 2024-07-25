@@ -1,5 +1,6 @@
 streamlit
-langchain==0.0.115  # 최신 버전을 명시적으로 추가합니다.
+langchain==0.0.115
 pymupdf
 openai
 beautifulsoup4
+faiss-cpu
